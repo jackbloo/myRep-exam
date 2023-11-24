@@ -71,10 +71,8 @@ function App(): JSX.Element {
 
   const checkPermissions = async () => {
     try {
-      const allGranted = permissionOptions.map(async () => {
-        const granted = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-        );
+      const allGranted = permissionOptions.map(async el => {
+        const granted = await PermissionsAndroid.check(el);
         return granted;
       });
       const result = await Promise.all(allGranted);
@@ -128,7 +126,23 @@ function App(): JSX.Element {
         if (!mediaPermission || !photoPermission || !locationPermission) {
           checkPermissions();
         }
-        handleMockLocation();
+        isMockingLocation()
+          .then(({isLocationMocked}) => {
+            // isLocationMocked: boolean
+            // boolean result for Android and iOS >= 15.0
+            if (isLocationMocked) {
+              Alert.alert('Warning', 'Fake GPS is detected', [
+                {text: 'I understand', onPress: () => BackHandler.exitApp()},
+              ]);
+            }
+          })
+          .catch((error: MockLocationDetectorError) => {
+            console.log(error);
+            // error.message - descriptive message
+            Alert.alert('Error', 'Fail to get Location', [
+              {text: 'OK', onPress: () => console.log('Fail')},
+            ]);
+          });
         appState.current = nextAppState;
         setAppStateVisible(appState.current);
         shouldHandleBackground.current = true;
@@ -145,7 +159,7 @@ function App(): JSX.Element {
     }
   }, [mediaPermission, photoPermission, locationPermission]);
 
-  const handleMockLocation = useCallback(async () => {
+  useEffect(() => {
     if (locationPermission) {
       isMockingLocation()
         .then(({isLocationMocked}) => {
@@ -165,10 +179,6 @@ function App(): JSX.Element {
         });
     }
   }, [locationPermission]);
-
-  useEffect(() => {
-    handleMockLocation();
-  }, [locationPermission, handleMockLocation]);
 
   const getTime = (timestamp: number) => {
     const t = new Date(timestamp);
