@@ -5,7 +5,7 @@
  * @format
  */
 
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -43,6 +43,7 @@ import {CameraRoll} from '@react-native-camera-roll/camera-roll';
 function App(): JSX.Element {
   const camera = useRef<any>(null);
   const viewShotRef = useRef<any>(null);
+  const shouldHandleBackground = useRef(true);
   const [capturePhoto, setCapturePhoto] = useState<null | string>(null);
   const [photoPermission, setPhotoPermission] = useState(false);
   const [locationPermission, setLocationPermission] = useState(false);
@@ -55,9 +56,38 @@ function App(): JSX.Element {
   const appState = useRef(AppState.currentState);
   const [appStateVisible, setAppStateVisible] = useState(appState.current);
   const [isSaving, setIsSaving] = useState(false);
+  const permissionOptions = [
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+    PermissionsAndroid.PERMISSIONS.ACCESS_MEDIA_LOCATION,
+    PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+    PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+  ];
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  };
+
+  const checkPermissions = async () => {
+    try {
+      const allGranted = permissionOptions.map(async () => {
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+        );
+        return granted;
+      });
+      const result = await Promise.all(allGranted);
+      if (result[1] && result[2]) {
+        setLocationPermission(true);
+      }
+      if (result[3]) {
+        setMediaPermission(true);
+      }
+      if (result[0] && result[4] && result[5]) {
+        setPhotoPermission(true);
+      }
+    } catch (error) {}
   };
 
   const requestPermissions = async () => {
@@ -93,8 +123,16 @@ function App(): JSX.Element {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      appState.current = nextAppState;
-      setAppStateVisible(appState.current);
+      if (nextAppState === 'active' && shouldHandleBackground.current) {
+        shouldHandleBackground.current = false;
+        if (!mediaPermission || !photoPermission || !locationPermission) {
+          checkPermissions();
+        }
+        handleMockLocation();
+        appState.current = nextAppState;
+        setAppStateVisible(appState.current);
+        shouldHandleBackground.current = true;
+      }
     });
     return () => {
       subscription.remove();
@@ -105,9 +143,9 @@ function App(): JSX.Element {
     if (!mediaPermission || !photoPermission || !locationPermission) {
       requestPermissions();
     }
-  }, [mediaPermission, photoPermission, locationPermission, appStateVisible]);
+  }, [mediaPermission, photoPermission, locationPermission]);
 
-  useEffect(() => {
+  const handleMockLocation = useCallback(async () => {
     if (locationPermission) {
       isMockingLocation()
         .then(({isLocationMocked}) => {
@@ -126,7 +164,11 @@ function App(): JSX.Element {
           ]);
         });
     }
-  }, [locationPermission, appStateVisible]);
+  }, [locationPermission]);
+
+  useEffect(() => {
+    handleMockLocation();
+  }, [locationPermission, handleMockLocation]);
 
   const getTime = (timestamp: number) => {
     const t = new Date(timestamp);
@@ -159,27 +201,34 @@ function App(): JSX.Element {
 
   const takePhoto = async () => {
     if (camera.current !== null) {
-      const photo = await camera.current.takePhoto({});
-      Geolocation.getCurrentPosition(
-        position => {
-          const formatted = getTime(position.timestamp);
-          setCurrentLocation({
-            latitude: position.coords.latitude,
-            longitude: position?.coords.longitude,
-            time: formatted,
-            nonFormattedTime: position.timestamp,
-          });
-          const newPhoto = 'file://' + photo.path;
-          setCapturePhoto(newPhoto);
-          setShowCamera(false);
-        },
-        error => {
-          // See error code charts below.
-          console.log(error.code, error.message);
-        },
-        {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
-      );
-      // setImageSource(photo.path);
+      try {
+        const photo = await camera.current.takePhoto({});
+        Geolocation.getCurrentPosition(
+          position => {
+            const formatted = getTime(position.timestamp);
+            setCurrentLocation({
+              latitude: position.coords.latitude,
+              longitude: position?.coords.longitude,
+              time: formatted,
+              nonFormattedTime: position.timestamp,
+            });
+            const newPhoto = 'file://' + photo.path;
+            setCapturePhoto(newPhoto);
+            setShowCamera(false);
+          },
+          error => {
+            // See error code charts below.
+            Alert.alert('Error', 'Fail to open camera, please try again', [
+              {text: 'OK', onPress: () => handleRemove()},
+            ]);
+          },
+          {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+        );
+      } catch (error) {
+        Alert.alert('Error', 'Fail to open camera, please try again', [
+          {text: 'OK', onPress: () => handleRemove()},
+        ]);
+      }
     }
   };
 
@@ -200,7 +249,6 @@ function App(): JSX.Element {
           .readFile(data, 'base64')
           .then(blobData => {
             let imageData = EXIF.load('data:image/jpeg;base64,' + blobData);
-            console.log();
             imageData['GPS'][EXIF.GPSIFD.GPSLongitude] =
               EXIF.GPSHelper.degToDmsRational(currentLocation.latitude);
             imageData['GPS'][EXIF.GPSIFD.GPSLongitude] =
@@ -354,10 +402,10 @@ function App(): JSX.Element {
       ) : (
         <View style={styles.sectionBody}>
           <Text>
-            {'Please turn on the permissions for ' + !mediaPermission &&
-              'media ' + !photoPermission &&
-              'photo ' + !locationPermission &&
-              'location'}
+            Please turn on the permissions for{' '}
+            {`${!mediaPermission && 'media'} ${!photoPermission && 'photo'} ${
+              !locationPermission && 'location'
+            }`}
           </Text>
         </View>
       )}
