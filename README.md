@@ -20,7 +20,7 @@
 - [Introduction](#introduction)
 - [Features](#features)
 - [Flow](#flow)
-- [Terms & Conditions](#terms-&-conditions)
+- [Terms & Conditions](#terms-and-conditions)
 - [Build Process](#build-process)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -64,10 +64,10 @@ Interactive map with pinch-to-zoom and pan features.
 2. User take photo
 3. The location will be there in the photo for watermark
 4. The exif is added such as timestamp and location
-5. The map will be rendered using the webview (please kindly read in the [terms and conditions](#terms-&-conditions))
+5. The map will be rendered using the webview (please kindly read in the [terms and conditions](#terms-and-conditions))
 6. App can detect fake gps and user will unable to use the features before turning off the fake gps
 
-## Terms & Conditions
+## Terms and Conditions
 
 1. Map used is free, to use the google one need api key
 2. For further development, barcode reader is available
