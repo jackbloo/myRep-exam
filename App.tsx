@@ -139,9 +139,6 @@ function App(): JSX.Element {
           .catch((error: MockLocationDetectorError) => {
             console.log(error);
             // error.message - descriptive message
-            Alert.alert('Error', 'Fail to get Location', [
-              {text: 'OK', onPress: () => console.log('Fail')},
-            ]);
           });
         appState.current = nextAppState;
         setAppStateVisible(appState.current);
@@ -173,9 +170,7 @@ function App(): JSX.Element {
         })
         .catch((error: MockLocationDetectorError) => {
           // error.message - descriptive message
-          Alert.alert('Error', 'Fail to get Location', [
-            {text: 'OK', onPress: () => console.log('Fail')},
-          ]);
+          console.log(error);
         });
     }
   }, [locationPermission]);
@@ -259,10 +254,14 @@ function App(): JSX.Element {
           .readFile(data, 'base64')
           .then(blobData => {
             let imageData = EXIF.load('data:image/jpeg;base64,' + blobData);
+            imageData['GPS'][EXIF.GPSIFD.GPSLatitude] =
+              EXIF.GPSHelper.degToDmsRational(
+                Math.abs(currentLocation.latitude),
+              );
             imageData['GPS'][EXIF.GPSIFD.GPSLongitude] =
-              EXIF.GPSHelper.degToDmsRational(currentLocation.latitude);
-            imageData['GPS'][EXIF.GPSIFD.GPSLongitude] =
-              EXIF.GPSHelper.degToDmsRational(currentLocation.longitude);
+              EXIF.GPSHelper.degToDmsRational(
+                Math.abs(currentLocation.longitude),
+              );
             imageData['GPS'][EXIF.GPSIFD.GPSDateStamp] = currentLocation.time;
             imageData['Exif'][EXIF.ExifIFD.DateTimeOriginal] =
               currentLocation.time;
@@ -273,16 +272,11 @@ function App(): JSX.Element {
             );
             const base64Code = inserted.split('data:image/jpeg;base64,')[1];
             const newPath =
-              RNFS.CachesDirectoryPath +
+              RNFS.DownloadDirectoryPath +
+              '/' +
               currentLocation.nonFormattedTime +
               '.jpg';
-            RNFS.writeFile(
-              RNFS.CachesDirectoryPath +
-                currentLocation.nonFormattedTime +
-                '.jpg',
-              base64Code,
-              'base64',
-            )
+            RNFS.writeFile(newPath, base64Code, 'base64')
               .then(() => {
                 CameraRoll.save(newPath, {type: 'photo'});
                 setIsSaving(false);
@@ -290,11 +284,12 @@ function App(): JSX.Element {
                   {text: 'OK', onPress: () => handleRemove()},
                 ]);
               })
-              .catch(() => {
+              .catch(err => {
                 setIsSaving(false);
                 Alert.alert('Error', 'Fail to save photo, please try again', [
                   {text: 'OK', onPress: () => handleRemove()},
                 ]);
+                return err;
               });
           })
           .catch(err => {
