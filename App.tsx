@@ -216,7 +216,7 @@ function App(): JSX.Element {
             setCapturePhoto(newPhoto);
             setShowCamera(false);
           },
-          error => {
+          () => {
             // See error code charts below.
             Alert.alert('Error', 'Fail to open camera, please try again', [
               {text: 'OK', onPress: () => handleRemove()},
@@ -273,14 +273,14 @@ function App(): JSX.Element {
               base64Code,
               'base64',
             )
-              .then(result => {
+              .then(() => {
                 CameraRoll.save(newPath, {type: 'photo'});
                 setIsSaving(false);
                 Alert.alert('Info', 'Successfully save photo', [
                   {text: 'OK', onPress: () => handleRemove()},
                 ]);
               })
-              .catch(error => {
+              .catch(() => {
                 setIsSaving(false);
                 Alert.alert('Error', 'Fail to save photo, please try again', [
                   {text: 'OK', onPress: () => handleRemove()},
@@ -403,9 +403,9 @@ function App(): JSX.Element {
         <View style={styles.sectionBody}>
           <Text>
             Please turn on the permissions for{' '}
-            {`${!mediaPermission && 'media'} ${!photoPermission && 'photo'} ${
-              !locationPermission && 'location'
-            }`}
+            {`${!mediaPermission ? 'media' : ''} ${
+              !photoPermission ? 'photo' : ''
+            } ${!locationPermission ? 'location' : ''}`}
           </Text>
         </View>
       )}
