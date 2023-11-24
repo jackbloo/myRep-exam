@@ -73,6 +73,7 @@ Interactive map with pinch-to-zoom and pan features.
 2. For further development, barcode reader is available
 3. Note that internet, media, storage, camera, location permission should all be granted
 4. To check exifdata can go through this <a href="https://www.metadata2go.com/">website<a/> and upload the picture from this folder /storage/emulated/0/Download/example.jpg
+5. Use x-plore on android to access the folder
 
 ## Build Process
 
